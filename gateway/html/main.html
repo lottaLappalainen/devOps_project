@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Management Console</title>
+    <meta charset="utf-8" />
+    <style>
+        body { 
+            font-family: sans-serif; 
+            background: #fafafa; 
+            padding: 40px; 
+        }
+
+        h1 { margin-bottom: 20px; }
+
+        button { 
+            padding: 12px 26px;
+            margin: 6px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .primary {
+            background: #b035bd;
+            color: white;
+        }
+        .primary:hover {
+            background: #8d28a0;
+        }
+
+        .danger {
+            background: #871c2d;
+            color: white;
+        }
+        .danger:hover {
+            background: #b23333;
+        }
+
+        pre { 
+            background: #eee; 
+            padding: 15px; 
+            border-radius: 4px; 
+            white-space: pre-wrap; 
+        }
+
+        .token { 
+            background: #2f2c2c; 
+            color: #d974ed; 
+            padding: 10px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            word-break: break-all; 
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <h1>Management Console</h1>
+
+    <div id="controls" class="hidden">
+        <button class="primary" onclick="switchVersion()">SWITCH VERSION</button>
+        <button class="primary" onclick="discardOld()">DISCARD OLD</button>
+        <button class="primary" onclick="resetLog()">RESET LOG</button>
+
+        <button class="danger" onclick="doLogout()">LOGOUT</button>
+
+        <h2>JWT Token</h2>
+        <pre id="jwtBox" class="token">(no token)</pre>
+    </div>
+
+    <div id="publicMessage">
+        <p>You are authenticated with Basic Auth. JWT will be issued shortly.</p>
+    </div>
+
+    <h2>Container Status</h2>
+    <pre id="statusBox">Loading...</pre>
+
+    <h2>Log Output</h2>
+    <pre id="logBox">Loading...</pre>
+
+<script>
+let jwtToken = null;
+let intervalStatus = null;
+let intervalLog = null;
+
+async function switchVersion() {
+    const headers = jwtToken ? { "Authorization": "Bearer " + jwtToken } : {};
+    const r = await fetch("/switch", { method: "POST", headers, credentials: 'same-origin' });
+    alert(r.ok ? "Version switched" : "Failed: " + await r.text());
+}
+
+async function discardOld() {
+    const headers = jwtToken ? { "Authorization": "Bearer " + jwtToken } : {};
+    const r = await fetch("/discard", { method: "POST", headers, credentials: 'same-origin' });
+    alert(r.ok ? "Old version discarded" : "Failed: " + await r.text());
+}
+
+async function resetLog() {
+    const headers = jwtToken ? { "Authorization": "Bearer " + jwtToken } : {};
+    const r = await fetch("/api/reset", { method: "POST", headers, credentials: 'same-origin' });
+    alert(r.ok ? "Log reset" : "Failed: " + await r.text());
+}
+
+async function doLogout() {
+    const r = await fetch('/logout', { method: 'POST', credentials: 'same-origin' });
+
+    if (r.ok) {
+        clearInterval(intervalStatus);
+        clearInterval(intervalLog);
+
+        jwtToken = null;
+
+        document.getElementById('controls').classList.add('hidden');
+        document.getElementById('jwtBox').textContent = "(no token)";
+
+        document.getElementById('publicMessage').innerHTML =
+            "<p>Logged out. To fully end Basic Auth, close your browser or use an incognito window.</p>";
+
+        document.getElementById('publicMessage').classList.remove('hidden');
+
+        document.getElementById('statusBox').textContent = "Logged out";
+        document.getElementById('logBox').textContent = "Logged out";
+    } else {
+        alert("Logout failed");
+    }
+}
+
+async function loadJwt() {
+    const r = await fetch("/enable", { method: "POST", credentials: 'same-origin' });
+    if (r.ok) {
+        jwtToken = (await r.text()).trim();
+        document.getElementById("jwtBox").textContent = jwtToken || "(no token)";
+
+        document.getElementById('controls').classList.remove('hidden');
+        document.getElementById('publicMessage').classList.add('hidden');
+    }
+}
+
+async function fetchStatus() {
+    if (!jwtToken) return;
+    const headers = { "Authorization": "Bearer " + jwtToken };
+    const r = await fetch("/api/status", { headers, credentials: 'same-origin' });
+    if (r.ok) document.getElementById("statusBox").textContent = await r.text();
+}
+
+async function fetchLog() {
+    if (!jwtToken) return;
+    const headers = { "Authorization": "Bearer " + jwtToken };
+    const r = await fetch("/api/log", { headers, credentials: 'same-origin' });
+    if (r.ok) document.getElementById("logBox").textContent = await r.text();
+}
+
+async function init() {
+    await loadJwt();
+    await fetchStatus();
+    await fetchLog();
+
+    intervalStatus = setInterval(fetchStatus, 5000);
+    intervalLog = setInterval(fetchLog, 5000);
+}
+
+init();
+</script>
+
+
+<script src="/metrics.js"></script>
+</body>
+</html>

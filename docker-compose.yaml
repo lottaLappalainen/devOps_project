@@ -1,0 +1,66 @@
+version: "3.8"
+
+
+services:
+  gateway:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/gateway:${IMAGE_TAG}
+    depends_on:
+      - api_v1
+      - api_v2
+    ports:
+      - "8198:8198"
+      - "8199:8199"
+    restart: unless-stopped
+
+  api_v1:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/api_v1:${IMAGE_TAG}
+    depends_on:
+      - service2
+      - storage
+    expose:
+      - "8199"
+    restart: unless-stopped
+    environment:
+      - API_VERSION=v1
+
+  api_v2:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/api_v2:${IMAGE_TAG}
+    depends_on:
+      - service2
+      - storage
+    expose:
+      - "8199"
+    restart: unless-stopped
+    environment:
+      - API_VERSION=v2
+
+  service2:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/service2:${IMAGE_TAG}
+    depends_on:
+      - storage
+    expose:
+      - "8300"
+    restart: unless-stopped
+
+  storage:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/storage:${IMAGE_TAG}
+    volumes:
+      - storage_data:/data
+    expose:
+      - "8200"
+    restart: unless-stopped
+
+  monitoring:
+    image: ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/monitoring:${IMAGE_TAG}
+    container_name: monitoring
+    ports:
+      - "8400:8400"
+    depends_on:
+      - api_v1
+      - service2
+      - storage
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  storage_data: {}

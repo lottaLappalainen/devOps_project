@@ -1,0 +1,8 @@
+Used tool: ChatGPT
+
+Motivation/reason to use LLM: Infuriating nginx conf and pipeline difficulties
+
+How and why LLM helped: Basically it didn't, offered me same hallucinations over and over again. Especially with the pipeline. It did help with config once I myself fully comprehended what I want and how I want it.
+
+What kind of mistakes LLM did: Many many yaml syntax errors, not understanding hw to run docker during the run
+
